@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Results</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3 class="text-center">Risultati della ricerca</h3>
+    <a id="upload-button" class="btn btn-primary fixed-button" href="#">Carica Immagine</a>
+
+    <div class="row">
+        <div class="col-9">
+            <img id="product-image" src="" alt="Product Image" class="img-fluid mb-4">
+        </div>
+        <div class="col-4">
+            <div class="product-info">
+                <p><strong>Nome del prodotto</strong><br><span id="product-name"></span></p>
+                <p><strong>Quantità del prodotto</strong><br><span id="product-quantity"></span></p>
+                <p><strong>Categoria</strong><br><span id="product-categories"></span></p>
+                <p><strong>Marchi</strong><br><span id="product-brands"></span></p>
+<p><strong>Data di scadenza</strong><br><span id="product-expiry"></span></p>
+                <p><strong>Caratteristiche specifiche</strong><br><span id="product-features"></span></p>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="product-info">
+                <p><strong>Paese d'origine</strong><br><span id="product-countries"></span></p>
+                <p><strong>Ingredienti</strong><br><span id="product-ingredients"></span></p>
+                
+                <p><strong>Packaging:</strong><br><span id="product-packaging"></span></p>
+                <p><strong>Codici a barre</strong><br><span id="product-barcodes"></span></p>
+                
+                <p><strong>Tracce di allergeni</strong><br><span id="product-traces"></span></p>
+            </div>
+<p><strong>Informazioni nutrizionali</strong></p>
+                <div class="product-nutrition">
+                    <ol id="nutrition-list" class="list-group list-group-numbered"></ol>
+                </div>
+        </div>
+    </div>
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const imageUrl = localStorage.getItem('productImageUrl');
+    const metadataStr = localStorage.getItem('productMetadata');
+    
+    if (imageUrl) {
+        document.getElementById('product-image').src = imageUrl;
+    }
+    
+    if (metadataStr) {
+        const metadata = JSON.parse(metadataStr);
+
+        document.getElementById('product-name').innerText = metadata.product_name ? metadata.product_name : 'N/A';
+        document.getElementById('product-quantity').innerText = metadata.quantity ? metadata.quantity : 'N/A';
+        document.getElementById('product-categories').innerText = metadata.categories ? metadata.categories : 'N/A';
+        document.getElementById('product-brands').innerText = metadata.brands ? metadata.brands : 'N/A';
+        document.getElementById('product-countries').innerText = metadata.countries ? metadata.countries : 'N/A';
+        document.getElementById('product-ingredients').innerText = metadata.ingredients_text ? metadata.ingredients_text : 'N/A';
+        document.getElementById('product-packaging').innerText = metadata.packaging ? metadata.packaging : 'N/A';
+        document.getElementById('product-barcodes').innerText = metadata._id ? metadata._id : 'N/A';
+        document.getElementById('product-expiry').innerText = metadata.expiration_date ? metadata.expiration_date : 'N/A';
+        document.getElementById('product-features').innerText = metadata.labels ? metadata.labels : 'N/A';
+        document.getElementById('product-traces').innerText = metadata.traces ? metadata.traces : 'N/A';
+
+        // Formatta e visualizza i dati nutrizionali
+        formatNutritionData(metadata.nutriments);
+
+        // Carica le immagini con lo stesso barcode
+        loadImagesByBarcode(metadata._id);
+
+        // Aggiungi l'URL con il barcode al pulsante di caricamento immagine
+        const uploadButton = document.getElementById('upload-button');
+        uploadButton.href = `http://alimentitest.local/carica-foto/?barcode=${metadata._id}`;
+    }
+});
+
+// Funzione per formattare e visualizzare i dati nutrizionali
+function formatNutritionData(nutriments) {
+    const nutritionList = document.getElementById('nutrition-list');
+    if (nutriments) {
+        let items = '';
+        for (const [key, value] of Object.entries(nutriments)) {
+            items += `
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-bold">${key}</div>
+                    </div>
+                    <span class="badge text-bg-primary rounded-pill">${value}</span>
+                </li>
+            `;
+        }
+        nutritionList.innerHTML = items;
+    } else {
+        nutritionList.innerHTML = '<li class="list-group-item">Nessuna informazione nutrizionale disponibile.</li>';
+    }
+}
+
+// Funzione per caricare le immagini con lo stesso barcode
+function loadImagesByBarcode(barcode) {
+    $.ajax({
+        url: `/wp-json/myplugin/v1/barcode/${barcode}`, // Endpoint personalizzato nel tuo sito WordPress
+        type: 'GET',
+        success: function(response) {
+            const imagesDiv = document.getElementById('product-images-review');
+            imagesDiv.innerHTML = ''; // Svuota il contenitore delle immagini
+            if (response && response.length > 0) {
+                response.forEach(imageUrl => {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.classList.add('img-fluid', 'mb-2');
+                    imagesDiv.appendChild(img);
+                });
+            } else {
+                imagesDiv.innerHTML = '<p>Nessuna immagine trovata con questo barcode. <a href="http://alimentitest.local/carica-foto/?barcode=' + barcode + '">Carica immagine</a></p>';
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error(error);
+            const imagesDiv = document.getElementById('product-images-review');
+            imagesDiv.innerHTML = '<p>Si è verificato un errore nel recupero delle immagini.</p>';
+        }
+    });
+}
+</script>
+</body>
+</html>
